@@ -1,0 +1,70 @@
+# Tello profile: python -m wildtrack --config config.tello.yaml <command>
+#
+# Overlays config.yaml. A Tello has no GPS, no gimbal, a ~10 m ceiling and a few minutes of
+# battery, so distances, heights and speeds are scaled down to a backyard or hall. Positions are
+# metres from the takeoff point (dead reckoning), reported as lat/lon around tello.home.
+# Detection uses COCO weights (animals it already knows, e.g. dog, cat, horse, bear); a person
+# is a confuser and can never be locked.
+_base: config.yaml
+
+link:
+  backend: "tello"
+  alive_s: 0.6
+
+video:
+  rtsp_url: "udp://0.0.0.0:11111?fifo_size=5000000&overrun_nonfatal=1"   # the Tello's H.264 stream
+  lag_s: 0.40                     # measure: python -m wildtrack calibrate-lag --config config.tello.yaml
+
+camera:
+  hfov_deg: 70.0                  # 960x720 video. Measure on the bench
+
+detector:
+  weights: "yolo26s.pt"           # COCO; downloaded on first use. Fine-tuned weights go in models/
+  imgsz: 640
+  conf: 0.3
+
+classes:
+  targets: [dog, cat, horse, sheep, cow, elephant, bear, zebra, giraffe, bird]
+  confusers: [person, chair, couch]
+  test_mode: false
+  test_classes: []                # e.g. [teddy bear, sports ball]: stand-ins, only with test_mode: true
+
+geo:
+  sigma_gps_m: 0.8                # dead-reckoning drift of the aircraft's own position
+  sigma_att_deg: 2.0
+  sigma_alt_m: 0.15
+  min_depression_deg: 4.0
+  max_range_m: 40.0
+  nadir_pitch_deg: -80.0
+
+estimator:
+  accel_sigma: 1.0
+  init_vel_sigma: 1.0
+
+controller:
+  standoff_m: 2.5
+  bearing_hold_m: 0.4
+  kp: 0.5
+  ki: 0.02
+  integrator_limit_mps: 0.4
+  v_max_mps: 1.2
+  a_max_mps2: 0.8
+  vz_kp: 0.6
+  vz_max_mps: 0.4
+  yaw_kp: 1.0
+  yaw_rate_max_dps: 60.0
+  tau_s: 0.7
+  max_kp_tau: 0.4
+
+safety:
+  min_gps_sats: 0                 # a Tello has no GPS
+  min_battery_pct: 20.0
+  alt_min_m: 0.8
+  alt_max_m: 3.0
+  operating_radius_m: 15.0
+
+dashboard:
+  map_center: [12.2958, 76.6394]
+  map_zoom: 19
+  map_max_zoom: 21
+  video_max_width: 960

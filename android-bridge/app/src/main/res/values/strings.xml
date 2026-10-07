@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">wildtrack bridge</string>
+    <string name="stop_auto">STOP AUTO</string>
+    <string name="stop_auto_hint">Turns Virtual Stick off. The pilot flies. Same as Pause on the remote.</string>
+    <string name="sim_start">Start DJI simulator</string>
+    <string name="sim_stop">Stop simulator</string>
+    <string name="axis_transposed">Axis mapping: roll = east, pitch = north (transposed)</string>
+    <string name="notif_channel">Bridge</string>
+    <string name="notif_text">Relaying video, telemetry and commands</string>
+</resources>

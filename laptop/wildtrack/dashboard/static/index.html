@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wildtrack ground station</title>
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header id="bar">
+  <div id="mode" class="mode MANUAL">MANUAL</div>
+  <div id="status">
+    <span id="s-link" class="pill bad">phone link</span>
+    <span id="s-video" class="pill bad">video</span>
+    <span class="stat">lag <b id="s-lag">–</b></span>
+    <span class="stat">detect <b id="s-infer">–</b></span>
+    <span class="stat">cmd <b id="s-rate">–</b></span>
+    <span class="stat">batt <b id="s-batt">–</b></span>
+    <span class="stat">sats <b id="s-sats">–</b></span>
+    <span class="stat">AGL <b id="s-agl">–</b></span>
+    <span class="stat">home <b id="s-home">–</b></span>
+    <span class="stat">VS <b id="s-vs">–</b></span>
+  </div>
+  <div id="viewonly" hidden>view only</div>
+</header>
+
+<div id="alarm" hidden></div>
+
+<main>
+  <section id="video-panel" class="panel">
+    <div id="video-wrap">
+      <canvas id="video" width="960" height="540"></canvas>
+      <div id="novideo">waiting for video…</div>
+    </div>
+    <div id="controls">
+      <button id="b-lock" title="Lock the highest-confidence candidate, or click a box">LOCK <kbd>L</kbd></button>
+      <button id="b-engage" title="Laptop takes over through Virtual Stick">ENGAGE <kbd>E</kbd></button>
+      <button id="b-release" class="danger" title="Virtual Stick off: the pilot flies">RELEASE <kbd>Esc</kbd></button>
+      <span id="reply"></span>
+    </div>
+    <ul id="refusals"></ul>
+    <div id="tello-panel" hidden>
+      <button id="b-takeoff">TAKEOFF</button>
+      <button id="b-land">LAND</button>
+      <button id="b-emergency" class="danger" title="Stops the motors immediately: the drone drops">EMERGENCY STOP</button>
+      <div class="hint">Fly in MANUAL: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, <kbd>R</kbd>/<kbd>F</kbd> up/down, <kbd>,</kbd>/<kbd>.</kbd> turn. <kbd>Esc</kbd> hovers and takes you back to MANUAL.</div>
+    </div>
+    <div id="sim-panel" hidden>
+      Simulator: <button id="b-pause">Pilot presses Pause</button>
+    </div>
+  </section>
+
+  <section id="map-panel" class="panel">
+    <div id="map"></div>
+    <label class="follow"><input type="checkbox" id="follow" checked> follow drone</label>
+  </section>
+
+  <section id="coords-panel" class="panel">
+    <h2>Animal position <span id="c-class"></span></h2>
+    <div id="c-none">No animal locked yet.</div>
+    <div id="c-body" hidden>
+      <div class="big" id="c-dec">–</div>
+      <div id="c-dms">–</div>
+      <table>
+        <tr><th>Error radius</th><td id="c-sigma">–</td></tr>
+        <tr><th>Last sighting</th><td id="c-seen">–</td></tr>
+        <tr><th>Moving</th><td id="c-move">–</td></tr>
+      </table>
+      <div class="buttons">
+        <button id="b-copy">Copy</button>
+        <a id="a-gmaps" class="button" target="_blank" rel="noopener">Google Maps</a>
+        <button id="b-qr">QR code</button>
+        <a id="a-geo" class="button">geo: link</a>
+        <a id="a-sms" class="button">SMS</a>
+      </div>
+    </div>
+    <h2>Export this sortie</h2>
+    <div class="buttons">
+      <a class="button" href="/api/export.gpx">GPX track</a>
+      <a class="button" href="/api/export.kml">KML (Google Earth)</a>
+    </div>
+    <h2>Alerts</h2>
+    <ol id="alerts"></ol>
+  </section>
+</main>
+
+<div id="qr-modal" hidden>
+  <div class="modal">
+    <img id="qr-img" alt="QR code of the animal's position">
+    <div>
+      <label><input type="radio" name="qrkind" value="maps" checked> Maps link</label>
+      <label><input type="radio" name="qrkind" value="geo"> geo:</label>
+      <label><input type="radio" name="qrkind" value="text"> text</label>
+    </div>
+    <div id="qr-text"></div>
+    <button id="b-qr-close">Close</button>
+  </div>
+</div>
+
+<script src="/static/vendor/leaflet/leaflet.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wildtrack"
+version = "0.1.0"
+description = "Laptop side of the wildlife-tracking drone: YOLO detection, geolocation, follow control, ground-station dashboard"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "pyyaml>=6.0",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.35",
+    "websockets>=13.0",
+    "av>=12.0",
+    "opencv-python>=4.9",
+    "segno>=1.6",
+    "tifffile>=2024.1",
+    "imagecodecs>=2024.1",
+    "ultralytics>=8.4.0",
+    "lap>=0.5.12",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0", "httpx>=0.27"]
+
+[project.scripts]
+wildtrack = "wildtrack.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["wildtrack*"]
+
+[tool.setuptools.package-data]
+wildtrack = ["dashboard/static/*", "dashboard/static/vendor/leaflet/*", "dashboard/static/vendor/leaflet/images/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]

@@ -1,0 +1,33 @@
+# personal notes, not for the repository
+CHECKPOINT.md
+NOTES*.md
+notes/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# runtime data and large downloads
+laptop/logs/
+laptop/dem/
+laptop/tiles/
+laptop/models/
+*.pt
+*.mp4
+
+# Android (parked DJI relay)
+android-bridge/local.properties
+android-bridge/.gradle/
+android-bridge/build/
+android-bridge/app/build/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

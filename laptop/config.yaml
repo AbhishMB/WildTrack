@@ -1,0 +1,179 @@
+# wildtrack laptop configuration.
+#
+# Every threshold, gain and limit the laptop app uses lives here; the code has no
+# magic numbers (docs/SPEC.md, "Rules for the code"). Units are in the key names:
+# _s seconds, _m metres, _deg degrees, _dps degrees/second, _mps metres/second,
+# _pct percent, _hz hertz. Relative paths are relative to this file.
+
+link:
+  backend: "dji"                  # "dji": Android bridge app on the phone. "tello": laptop talks to the drone directly
+  phone_host: "192.168.43.1"      # the phone's address on the field Wi-Fi (Android hotspot gateway by default)
+  ws_port: 8765                   # LinkServer.kt listens here
+  ws_path: "/link"
+  reconnect_s: 1.0
+  telemetry_buffer_s: 5.0         # ring buffer of poses, looked up at frame capture time
+  alive_s: 0.5                    # no telemetry for this long = phone link down (ENGAGE guard, hand-back)
+  pose_max_extrapolation_s: 0.2   # a frame newer than the newest pose by more than this gets no pose
+
+video:
+  rtsp_url: "rtsp://aaa:aaa@192.168.43.1:8554/streaming/live/1"   # LiveStream.kt prints the exact URL
+  rtsp_transport: "udp"           # udp has the least delay; switch to tcp if the Wi-Fi drops packets
+  lag_s: 0.30                     # video behind telemetry. Measure: `python -m wildtrack calibrate-lag`
+  reconnect_s: 1.0
+  open_timeout_s: 5.0
+
+camera:
+  hfov_deg: 80.0                  # horizontal FOV of the *streamed* image. Measure it on the bench (README)
+
+detector:
+  weights: "models/wildtrack-yolo26s.pt"   # fine-tuned weights from training/; yolo26s.pt for COCO-only tests
+  imgsz: 1280                     # full-frame inference; 640 loses a leopard at 60 m (SPEC, small objects)
+  conf: 0.25                      # detector floor; lock rules apply their own thresholds below
+  iou: 0.5
+  device: "cuda:0"                # "cpu" works for the simulator, far too slow for flight
+  half: true
+  tracker: "bytetrack.yaml"
+  tile_search: false              # SAHI-style tiling, Manual mode only, if recall is low
+  tile_size: 1280
+  tile_overlap: 0.2
+
+classes:
+  targets: [elephant, leopard, tiger, wild_boar, gaur, sloth_bear, deer]
+  confusers: [cattle, goat, dog, person]
+  # Stage 6 only: classes that may be locked as a stand-in (tarp, or cattle with the
+  # owner's permission). Ignored unless test_mode is true. "person" can never be locked.
+  test_mode: false
+  test_classes: []
+
+lock:
+  candidate_conf: 0.5
+  candidate_frames: 5
+  auto_lock: false                # true: a candidate held auto_lock_frames at auto_lock_conf locks itself
+  auto_lock_conf: 0.7
+  auto_lock_frames: 15
+  auto_engage: false              # SIMULATION ONLY. `wildtrack run` refuses to start with this on
+  track_lost_s: 5.0               # Locked, target not detected this long -> Manual
+  track_forget_s: 2.0             # drop per-track statistics after this long unseen
+  gate_mahalanobis: 3.0           # re-acquire gate against the Kalman prediction
+
+geo:
+  earth_radius_m: 6371000.0
+  dem_dir: "dem"                  # Copernicus GLO-30 GeoTIFFs (tools/fetch_dem.py). Missing/empty = flat ground
+  terrain_iterations: 3
+  sigma_gps_m: 2.5                # 1-sigma horizontal GPS error of the aircraft
+  sigma_att_deg: 1.0              # 1-sigma gimbal attitude error
+  sigma_alt_m: 5.0                # 1-sigma height-above-ground error (barometer drift + DEM)
+  min_depression_deg: 5.0         # rays flatter than this give no fix (error grows without bound)
+  max_range_m: 600.0              # no fix beyond this horizontal distance
+  nadir_pitch_deg: -75.0          # gimbal at or below this: use box centre instead of bottom-centre
+
+estimator:
+  accel_sigma: 1.5                # m/s^2, process noise sized for a running animal
+  init_vel_sigma: 3.0             # m/s, velocity uncertainty of a brand-new track
+
+controller:
+  rate_hz: 10.0                   # DJI accepts 5-25 Hz in advanced mode
+  standoff_m: 40.0
+  bearing_hold_m: 3.0             # closer than this, keep the previous standoff bearing
+  kp: 0.4                         # 1/s.  Keep kp * tau_s <= max_kp_tau
+  ki: 0.02                        # 1/s^2
+  integrator_limit_mps: 1.0
+  v_max_mps: 5.0
+  a_max_mps2: 1.0
+  vz_kp: 0.5                      # 1/s, only used to get back inside the altitude band
+  vz_max_mps: 2.0
+  yaw_kp: 0.8                     # 1/s
+  yaw_rate_max_dps: 30.0
+  gimbal_min_deg: -90.0
+  gimbal_max_deg: -20.0
+  gimbal_box_gain: 0.3            # fraction of the box's vertical angular offset corrected per update
+  gimbal_rate_hz: 2.0
+  tau_s: 0.5                      # measured total loop delay (video + inference + network + DJI response)
+  max_kp_tau: 0.4                 # rad; ~67 deg phase margin
+
+safety:
+  min_gps_sats: 10
+  min_battery_pct: 35.0
+  alt_min_m: 40.0                 # height above ground, ENGAGE band and controller clamp
+  alt_max_m: 80.0
+  operating_radius_m: 1000.0      # from home
+  no_fix_hover_s: 2.0             # Auto -> Lost (hover)
+  no_fix_handback_s: 10.0         # since the last fix: Lost -> Manual (Virtual Stick off)
+  vs_grace_s: 2.0                 # after ENGAGE, how long telemetry may still show vs_enabled=false
+
+tello:                            # used when link.backend is "tello" (see config.tello.yaml)
+  host: "192.168.10.1"
+  cmd_port: 8889
+  state_port: 8890
+  local_cmd_port: 0
+  video_port: 11111
+  connect_retry_s: 1.0
+  state_timeout_s: 1.5
+  rc_hz: 20.0                     # the drone wants rc often; it lands itself after 15 s of silence
+  rc_stale_s: 0.3                 # manual stick older than this = hover
+  watchdog_hover_s: 0.3           # laptop control loop stalled: hover
+  watchdog_handback_s: 3.0        # ...then Virtual-Stick-equivalent off (manual hover)
+  rc_per_mps: 30.0                # rc units per m/s. CALIBRATE: `python -m wildtrack tello-bench`
+  yaw_dps_per_unit: 1.0
+  max_speed_mps: 3.0
+  state_speed_mps: 0.1            # vgx/vgy are dm/s in the SDK docs. VERIFY on the bench
+  vg_forward_sign: 1
+  vg_right_sign: 1
+  home: [12.2958, 76.6394]        # where you take off from; coordinates are reported relative to this
+  takeoff_heading_deg: 0.0        # compass heading the nose points at takeoff (0 = north)
+  camera_pitch_deg: -10.0         # camera axis below the airframe's nose axis. VERIFY on the bench
+  manual_speed_frac: 0.5
+
+dashboard:
+  host: "0.0.0.0"                 # reachable from phones on the field Wi-Fi
+  port: 8000
+  state_hz: 5.0
+  animal_hz: 1.0                  # animal position publish rate while locked
+  stale_pin_s: 30.0               # pin turns grey after this long without a sighting
+  trail_minutes: 10.0
+  tiles_dir: "tiles"              # offline XYZ tiles: tiles/{z}/{x}/{y}.png (or .jpg)
+  mbtiles: ""                     # or a single .mbtiles file instead of tiles_dir
+  map_center: [12.2958, 76.6394]  # used until the drone reports a position
+  map_zoom: 15
+  map_max_zoom: 19
+  video_max_width: 960            # frames sent to browsers are downscaled to this
+  jpeg_quality: 70
+  # Only these addresses may LOCK and ENGAGE. RELEASE works from every client.
+  control_hosts: ["127.0.0.1", "::1"]
+
+logging:
+  dir: "logs"
+  record_video: true              # frames detection ran on, so replay.py can rerun them
+  video_fps: 15.0                 # nominal container rate; true times are in the log
+
+sim:
+  seed: 7
+  ws_port: 8765
+  home: [12.2901, 76.6402]
+  width: 1280
+  height: 720
+  fps: 15.0
+  video_lag_s: 0.30               # true lag in the simulator
+  telemetry_delay_s: 0.05
+  cmd_delay_s: 0.15               # laptop send -> aircraft acts
+  vel_tau_s: 0.3                  # first-order velocity response of the flight controller
+  infer_s: 0.04                   # simulated detector time
+  watchdog_hover_s: 0.3           # mirrors Watchdog.kt on the phone
+  watchdog_handback_s: 3.0
+  start_alt_m: 60.0
+  start_standoff_m: 40.0
+  start_gimbal_deg: -55.0
+  gimbal_rate_dps: 60.0
+  animal_class: "elephant"
+  animal_speed_mps: 1.5
+  animal_turn_sigma_dps: 8.0
+  confusers: 2                    # cattle wandering nearby
+  trees: 25
+  tree_radius_m: 6.0
+  det_noise_px: 1.5
+  det_dropout: 0.05
+  battery_start_pct: 90.0
+  battery_drain_pct_per_min: 2.0
+  gps_sats: 18
+  ground_m_per_px: 1.0            # coarser ground texture: 4x less memory than 0.5
+  ground_extent_m: 700.0
