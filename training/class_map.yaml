@@ -1,0 +1,25 @@
+# How each public dataset's labels map onto the class names WildTrack trains on.
+#
+# Left: the label name in the source dataset. Right: the WildTrack class name, or null to drop
+# that label. "*" maps every other label of a source to one class. A label with no entry, in a
+# source with no "*", keeps its own name. The output class list is the sorted set of names that
+# actually occur, written to <out>/wildtrack.yaml.
+#
+# After training, make sure classes.targets / classes.confusers in laptop/config.yaml use the
+# same names: targets can be locked, confusers never can, anything else is shown but ignored.
+
+waid:              # WAID (Applied Sciences, 2023): sheep, cattle, seal, camelus, kiang, zebra
+  sheep: sheep
+  cattle: cattle
+  seal: null       # marine animal, not useful here
+  camelus: camel
+  kiang: kiang
+  zebra: zebra
+
+bucktales:         # BuckTales detection subset (Naik et al., 2024): blackbuck antelope
+  "*": blackbuck
+
+aed:               # Aerial Elephant Dataset (Naudé & Joubert, 2019): point labels, elephants only
+  "*": elephant
+
+custom: {}         # your own footage in YOLO format (for example leopards): names are kept

@@ -9,11 +9,13 @@ estimates its position on the ground and reports it, with an error radius, on a 
 > hardware, a **full simulation** of the drone, the camera and the animal is included, so the whole idea can be seen
 > working on any laptop with no drone at all.
 
-**Status:** the concept was first demonstrated on a Tello drone by the author. This repository is the cleaned-up,
-tested rewrite: the control logic, geolocation, safety rules, dashboard and simulator are covered by 146 automated
-tests, and the Tello link is tested against a software stand-in of the drone. As with any new setup, the
-drone-specific values (speed scale, camera angle, video lag) are set by a short [calibration](#2-run-it-with-a-real-drone)
-on your own drone.
+**History and status:** this is a clean re-implementation of my B.E. minor project (2025), which flew a DJI Tello
+at low altitude as a proof of concept, with a YOLO model trained on public aerial wildlife datasets. The control logic,
+geolocation, safety rules, dashboard and simulator are covered by 146 automated tests, and the Tello link is tested
+against a software stand-in of the drone. Trained detector weights are not shipped: [`training/`](training/README.md)
+rebuilds them from public aerial datasets in three commands, and until you run it the app uses COCO weights as a
+stand-in. As with any new setup, the drone-specific values (speed scale, camera angle, video lag) are set by a short
+[calibration](#2-run-it-with-a-real-drone) on your own drone.
 
 ---
 
@@ -63,6 +65,7 @@ wildtrack/
       replay.py, logger.py   log every flight, re-run it later
     tests/                   146 tests
     config.yaml              all settings;  config.tello.yaml  Tello overrides
+  training/                  rebuild the aerial-wildlife detector from public datasets (README inside)
   android-bridge/            optional DJI Mobile SDK v5 phone relay (parked, see below)
 ```
 
@@ -76,8 +79,8 @@ drone you can hand over to the real autopilot code.
 **Requirements:** Windows, macOS or Linux, **Python 3.11**, about 1.5 GB of free RAM. No GPU needed.
 
 ```bash
-git clone <this-repository>
-cd wildtrack/laptop
+git clone https://github.com/AbhishMB/WildTrack.git
+cd WildTrack/laptop
 
 python -m venv .venv
 # Windows:  .venv\Scripts\activate        macOS/Linux:  source .venv/bin/activate
@@ -148,7 +151,7 @@ been compiled**, and is not part of the supported setup.
 
 ### Steps
 
-All commands run from `wildtrack/laptop` with the virtual environment active, and use the Tello profile
+All commands run from `WildTrack/laptop` with the virtual environment active, and use the Tello profile
 `config.tello.yaml`.
 
 1. **Prepare.** Fly outdoors in an open area or a large hall, with no people nearby. Put the Tello on flat ground.
@@ -203,8 +206,10 @@ keep connected), `send(msg)` (accepts `vel`, `vs_enable`, `vs_disable`, ...) and
 - **A Tello has no GPS.** Its position is estimated from its own speed reports and drifts over time; coordinates are
   relative to the take-off point (shown as latitude/longitude around `tello.home`). Range is a few metres and a
   flight lasts a few minutes. The error radius shown on the dashboard grows to reflect this.
-- The pretrained COCO model is a stand-in. Reliable detection of real wildlife from the air would need a model
-  fine-tuned on aerial footage (for example the Aerial Elephant Dataset, WAID or BuckTales).
+- **The detector needs training.** Until you train it, the app uses COCO weights, which know animals from the side,
+  not from the air. [`training/`](training/README.md) covers the base model (YOLO26s), the public aerial datasets
+  (WAID, BuckTales, the Aerial Elephant Dataset) and the three commands. Public aerial data covers elephants, blackbuck,
+  cattle, sheep and others, but we found none with leopards or tigers; those need your own labelled footage.
 - The map is blank unless you add offline map tiles (`dashboard.tiles_dir` in `config.yaml`).
 
 ## Licence
