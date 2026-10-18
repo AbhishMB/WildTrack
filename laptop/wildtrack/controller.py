@@ -3,9 +3,13 @@
 The controller does not steer on pixels. It flies the drone to a standoff point beside
 the estimated animal position and commands ground-frame velocity:
 
-    v_cmd = v_animal + Kp * e + Ki * integral(e),   e = p_set - p_drone
+    v_cmd = v_animal + Kp * e + Ki * integral(e) + Kd * de/dt,   e = p_set - p_drone
 
-then limits speed, acceleration and the integrator. Yaw turns the nose toward the
+a PID controller with velocity feedforward. The setpoint moves with the animal, so de/dt is
+the animal's estimated velocity minus the drone's own: the derivative is taken from those two
+velocities, not by differencing e, so a jump in the setpoint (a new standoff bearing, a
+re-acquired track) gives no derivative kick. It is low-pass filtered because both velocities
+are noisy. The output then has its speed, acceleration and integrator limited. Yaw turns the nose toward the
 animal; gimbal pitch comes from geometry plus a small correction from the box.
 """
 
@@ -51,12 +55,15 @@ class FollowController:
         self.i_e = 0.0
         self.prev_vn = 0.0
         self.prev_ve = 0.0
+        self.d_n = 0.0  # filtered derivative of the error (m/s)
+        self.d_e = 0.0
         self.prev_t: float | None = None
         self.standoff_bearing: float | None = None  # bearing animal -> drone, degrees
 
     def reset(self, vn_now: float = 0.0, ve_now: float = 0.0) -> None:
         """Called on every mode change. Starts the acceleration limit from the current velocity."""
         self.i_n = self.i_e = 0.0
+        self.d_n = self.d_e = 0.0
         self.prev_vn, self.prev_ve = vn_now, ve_now
         self.prev_t = None
 
@@ -105,10 +112,15 @@ class FollowController:
         sn, se = self.setpoint(target.n, target.e, drone.n, drone.e)
         en, ee = sn - drone.n, se - drone.e
 
+        # derivative of the error from velocities (no kick on setpoint jumps), low-pass filtered
+        a = 1.0 if c.d_filter_s <= 0.0 else dt / (c.d_filter_s + dt)
+        self.d_n += a * ((target.vn - drone.vn) - self.d_n)
+        self.d_e += a * ((target.ve - drone.ve) - self.d_e)
+
         # candidate integral; kept only if the output is not saturated (anti-windup)
         i_n, i_e = _limit_norm(self.i_n + c.ki * en * dt, self.i_e + c.ki * ee * dt, c.integrator_limit_mps)
-        vn = target.vn + c.kp * en + i_n
-        ve = target.ve + c.kp * ee + i_e
+        vn = target.vn + c.kp * en + i_n + c.kd * self.d_n
+        ve = target.ve + c.kp * ee + i_e + c.kd * self.d_e
         if math.hypot(vn, ve) <= c.v_max_mps:
             self.i_n, self.i_e = i_n, i_e
         vn, ve = _limit_norm(vn, ve, c.v_max_mps)

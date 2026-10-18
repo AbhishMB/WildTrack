@@ -77,6 +77,8 @@ controller:
   bearing_hold_m: 3.0             # closer than this, keep the previous standoff bearing
   kp: 0.4                         # 1/s.  Keep kp * tau_s <= max_kp_tau
   ki: 0.02                        # 1/s^2
+  kd: 0.1                         # derivative gain on (v_animal - v_drone); 0 = PI only
+  d_filter_s: 1.0                 # s, low-pass time constant of the derivative term
   integrator_limit_mps: 1.0
   v_max_mps: 5.0
   a_max_mps2: 1.0

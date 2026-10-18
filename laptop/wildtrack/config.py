@@ -115,6 +115,8 @@ class ControllerCfg:
     bearing_hold_m: float
     kp: float
     ki: float
+    kd: float
+    d_filter_s: float
     integrator_limit_mps: float
     v_max_mps: float
     a_max_mps2: float
@@ -318,6 +320,8 @@ def validate(cfg: Config) -> list[str]:
         errors.append("controller.rate_hz must be within DJI's 5-25 Hz")
     if k.gimbal_min_deg >= k.gimbal_max_deg:
         errors.append("controller: gimbal_min_deg must be below gimbal_max_deg")
+    if k.kd < 0.0 or k.d_filter_s < 0.0:
+        errors.append("controller: kd and d_filter_s must be >= 0")
     if k.kp * k.tau_s > k.max_kp_tau:
         warnings.append(
             f"controller: kp*tau = {k.kp * k.tau_s:.2f} rad exceeds {k.max_kp_tau} rad; "
