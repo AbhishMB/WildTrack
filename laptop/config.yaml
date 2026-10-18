@@ -26,7 +26,7 @@ camera:
   hfov_deg: 80.0                  # horizontal FOV of the *streamed* image. Measure it on the bench (README)
 
 detector:
-  weights: "models/wildtrack-yolo26s.pt"   # fine-tuned weights from training/; yolo26s.pt for COCO-only tests
+  weights: "models/wildtrack-yolo26s.pt"   # build with training/ (README); yolo26s.pt for COCO-only tests
   imgsz: 1280                     # full-frame inference; 640 loses a leopard at 60 m (SPEC, small objects)
   conf: 0.25                      # detector floor; lock rules apply their own thresholds below
   iou: 0.5
@@ -38,8 +38,8 @@ detector:
   tile_overlap: 0.2
 
 classes:
-  targets: [elephant, leopard, tiger, wild_boar, gaur, sloth_bear, deer]
-  confusers: [cattle, goat, dog, person]
+  targets: [elephant, leopard, tiger, wild_boar, gaur, sloth_bear, deer, blackbuck]
+  confusers: [cattle, goat, sheep, dog, person]
   # Stage 6 only: classes that may be locked as a stand-in (tarp, or cattle with the
   # owner's permission). Ignored unless test_mode is true. "person" can never be locked.
   test_mode: false
