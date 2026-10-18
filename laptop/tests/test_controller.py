@@ -1,3 +1,4 @@
+import dataclasses
 import math
 
 import numpy as np
@@ -115,3 +116,30 @@ def test_phase_margin_rule(cfg):
     k = cfg.controller
     assert k.kp * k.tau_s <= k.max_kp_tau
     assert 90 - math.degrees(k.max_kp_tau) == pytest.approx(67, abs=0.2)
+
+
+def test_derivative_acts_on_velocity_error(cfg):
+    """D term: Kd times the filtered (v_animal - v_drone); zero when the drone keeps pace."""
+    k = dataclasses.replace(cfg.controller, ki=0.0, kd=0.5, d_filter_s=0.0, a_max_mps2=100.0)
+    on = FollowController(k, cfg.safety)
+    off = FollowController(dataclasses.replace(k, kd=0.0), cfg.safety)
+    for c in (on, off):
+        c.reset(0.0, 0.0)
+    # drone at the setpoint, animal moving north at 1 m/s, drone still at rest
+    c_on = on.step(drone(0, 40, yaw=-90, vn=0.0), target(vn=1.0))
+    c_off = off.step(drone(0, 40, yaw=-90, vn=0.0), target(vn=1.0))
+    assert c_on.vn - c_off.vn == pytest.approx(0.5 * 1.0, abs=1e-9)
+    # once the drone keeps pace with the animal the derivative term vanishes
+    on.reset(1.0, 0.0)
+    off.reset(1.0, 0.0)
+    assert on.step(drone(0, 40, yaw=-90, vn=1.0, t=1.0), target(vn=1.0, t=1.0)).vn == pytest.approx(
+        off.step(drone(0, 40, yaw=-90, vn=1.0, t=1.0), target(vn=1.0, t=1.0)).vn, abs=1e-9)
+
+
+def test_derivative_has_no_kick_on_setpoint_jump(cfg):
+    """The derivative uses velocities, so a jump in the standoff point adds nothing to it."""
+    k = dataclasses.replace(cfg.controller, kd=0.5, d_filter_s=0.0)
+    ctrl = FollowController(k, cfg.safety)
+    ctrl.step(drone(0, 40, yaw=-90), target())
+    ctrl.step(drone(0, 40, yaw=-90, t=0.1), target(n=30.0, t=0.1))  # target estimate jumps 30 m
+    assert (ctrl.d_n, ctrl.d_e) == pytest.approx((0.0, 0.0))

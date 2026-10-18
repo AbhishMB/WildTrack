@@ -11,7 +11,7 @@ estimates its position on the ground and reports it, with an error radius, on a 
 
 **History and status:** this is a clean re-implementation of my B.E. minor project (2025), which flew a DJI Tello
 at low altitude as a proof of concept, with a YOLO model trained on public aerial wildlife datasets. The control logic,
-geolocation, safety rules, dashboard and simulator are covered by 146 automated tests, and the Tello link is tested
+geolocation, safety rules, dashboard and simulator are covered by 148 automated tests, and the Tello link is tested
 against a software stand-in of the drone. Trained detector weights are not shipped: [`training/`](training/README.md)
 rebuilds them from public aerial datasets in three commands, and until you run it the app uses COCO weights as a
 stand-in. As with any new setup, the drone-specific values (speed scale, camera angle, video lag) are set by a short
@@ -25,7 +25,7 @@ stand-in. As with any new setup, the drone-specific values (speed scale, camera 
  drone camera --video--> laptop --YOLO + tracker--> boxes --pixel to ground--> animal position (+ error radius)
                             ^                                                       |
                             |                                              Kalman filter (position, velocity)
-   drone <--velocity cmds-- laptop <------ PI follow controller <--- standoff point beside the animal
+   drone <--velocity cmds-- laptop <------ PID follow controller <-- standoff point beside the animal
 ```
 
 | Mode | Who flies | What runs |
@@ -40,7 +40,9 @@ Key design points:
 - **Only target species can be locked**; a **person can never be locked**, enforced in code (`lock.py`), not just in the UI.
 - **Follows a ground position, not pixels:** it estimates where the animal is and flies to a standoff point beside it,
   so a short occlusion (trees, bushes) doesn't lose the animal.
-- **PI controller with velocity feedforward** (`controller.py`), with speed, acceleration and integrator limits.
+- **PID controller with velocity feedforward** (`controller.py`), with speed, acceleration and integrator limits. The
+  derivative is taken from the animal's and the drone's velocities rather than by differencing the error, so a jump
+  in the setpoint gives no derivative kick.
 - **Safety:** RELEASE / `Esc` always works; the laptop never re-enables autopilot by itself after the pilot (or the
   drone) takes over; battery, range and link-loss checks hand control back.
 - **Everything is configurable** in one file, `laptop/config.yaml`; there are no magic numbers in the code.
@@ -56,14 +58,14 @@ wildtrack/
       lock.py                candidate / lock / re-acquire rules
       geo.py                 pixel -> ground position, error radius
       estimator.py           constant-velocity Kalman filter
-      controller.py          standoff setpoint, PI + feedforward, limits
+      controller.py          standoff setpoint, PID + feedforward, limits
       fsm.py                 MANUAL / LOCKED / AUTO / LOST state machine
       core.py                ties the above together (no I/O)
       tello.py               direct Wi-Fi link to a Tello
       app.py, dashboard/     the asyncio app and the browser ground station
       sim/                   the simulator (world, drone, camera)
       replay.py, logger.py   log every flight, re-run it later
-    tests/                   146 tests
+    tests/                   148 tests
     config.yaml              all settings;  config.tello.yaml  Tello overrides
   training/                  rebuild the aerial-wildlife detector from public datasets (README inside)
   android-bridge/            optional DJI Mobile SDK v5 phone relay (parked, see below)
@@ -120,7 +122,7 @@ pytest tests
 
 **What is simulated, and what is real:** the world, the drone's response and the camera are simulated (with video lag,
 command delay, detection noise, dropouts and occlusions). The detector in the live demo reads the simulator's
-ground truth. Everything else (locking rules, geolocation maths, Kalman filter, PI controller, mode state machine,
+ground truth. Everything else (locking rules, geolocation maths, Kalman filter, PID controller, mode state machine,
 dashboard, logging and replay) is the same code that flies a real drone.
 
 ---
